@@ -1,6 +1,13 @@
 on:
   workflow_call:
     inputs:
+      name: 
+        # Friendly description to be shown in the UI instead of 'name'
+        description: 'Do you want sonar check?'
+        required: true
+        # Default value if no value is explicitly provided
+        default: 'No'
+           
       environment:
         required: true
         type: string
@@ -78,13 +85,13 @@ jobs:
         with:
           files: target/surefire-reports/*.xml
 
-
+    if: ${{ inputs.description == 'false' }}
       - name: Sonar
         if: env.SONAR_ENABLED == 'true'
         env:
           ARTIFACTORY_USR: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PWD: ${{ secrets.ARTIFACTORY_TOKEN }}
-        run: |
+         run: |
           mvn sonar:sonar -Dsonar.login=${{ secrets.SONARQUBE_TOKEN }}  \
           -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY}} \
           -Dsonar.projectName=${{ env.PROJECT_NAME }} \
