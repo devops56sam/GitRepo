@@ -1,0 +1,60 @@
+name: Manual-Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'Which environment to deploy to'
+        required: true
+      tag:
+        description: "Which version to deploy"
+        required: true
+      rollback:
+        description: "If deployment is a rollback"
+        required: false
+        default: 'false'
+
+jobs:
+  init:
+    ## set tags and any outputs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: load cfacorp actions
+        uses: actions/checkout@v2
+        with:
+          repository: cfacorp/github-actions
+          ref: master
+          token: ${{ secrets.READONLY_GITHUB_TOKEN }}
+          path: .github/private-actions
+
+      - name: env-loader
+        uses: ./.github/private-actions/env-loader
+        with:
+          env-file: manifest.yaml
+          filter: base,${{ github.event.inputs.env }}
+          json-only: false
+
+      - name: env
+        run: |
+          echo env
+    outputs:
+      aws_alias: ${{ env.AWS_ACCOUNT_ALIAS }}
+
+  deploy:
+    needs: [ init ]
+    name: Deploy
+    uses: cfacorp/pricing-portal-api/.github/workflows/common_deploy.yaml@master
+    with:
+      environment: ${{ github.event.inputs.env }}
+      tag: ${{ github.event.inputs.tag }}
+      account_alias: ${{ needs.init.outputs.aws_alias }}
+      rollback: ${{ github.event.inputs.rollback }}
+    secrets:
+      ARTIFACTORY_CREDS: ${{ secrets.ARTIFACTORY_CREDS }}
+      SLACK_TOKEN_CFA_DX: ${{ secrets.SLACK_TOKEN_CFA_DX }}
+      READONLY_GITHUB_TOKEN: ${{ secrets.READONLY_GITHUB_TOKEN }}
+      SLACK_WEBHOOK_CFA_DX_RELEASES_NON_PROD: ${{ secrets.SLACK_WEBHOOK_CFA_DX_RELEASES_NON_PROD }}
+      SLACK_WEBHOOK_CFA_DX_RELEASES_PROD: ${{ secrets.SLACK_WEBHOOK_CFA_DX_RELEASES_PROD }}
+      SERVICENOW_USERNAME: ${{ secrets.SERVICENOW_USERNAME }}
+      SERVICENOW_PASSWORD: ${{ secrets.SERVICENOW_PASSWORD }}
