@@ -1,0 +1,94 @@
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      tag:
+        required: true
+        type: string
+      pull_request:
+        required: false
+        type: boolean
+    secrets:
+      ARTIFACTORY_USER:
+        required: true
+      ARTIFACTORY_TOKEN:
+        required: true
+      CFA_GITHUB_ACTIONS_GPG_PASS:
+        required: true
+      CFA_GITHUB_ACTIONS_GPG_KEY:
+        required: true
+      SONARQUBE_TOKEN:
+        required: true
+      CFA_GITHUB_ACTIONS_ACCESS_TOKEN:
+        required: true
+      READONLY_GITHUB_TOKEN:
+        required: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clear workspace
+        uses: chick-fil-a/gha-clear-workspace@v1
+
+      - uses: actions/checkout@v2
+      - uses: actions/setup-java@v2
+        with:
+          java-version: 17
+          distribution: 'zulu'
+      - name: load cfacorp actions
+        uses: actions/checkout@v2
+        with:
+          repository: cfacorp/github-actions
+          ref: master
+          token: ${{ secrets.READONLY_GITHUB_TOKEN }}
+          path: .github/private-actions
+
+      - name: env-loader
+        uses: ./.github/private-actions/env-loader
+        with:
+          env-file: manifest.yaml
+          filter: base,${{ inputs.environment }}
+          json-only: false
+
+      - name: maven-config
+        uses: ./.github/private-actions/maven-config
+        with:
+          username: ${{ secrets.ARTIFACTORY_USER }}
+          password: ${{ secrets.ARTIFACTORY_TOKEN }}
+
+      - uses: actions/cache@v1
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Test
+        run: mvn clean test
+        env:
+          ARTIFACTORY_USR: ${{ secrets.ARTIFACTORY_USER }}
+          ARTIFACTORY_PWD: ${{ secrets.ARTIFACTORY_TOKEN }}
+
+      - name: Publish Unit Test Results
+        uses: approved-3rd-party-actions/publish-unit-test-result-action@master
+        if: always()
+        with:
+          files: target/surefire-reports/*.xml
+
+
+      - name: Sonar
+        if: env.SONAR_ENABLED == 'true'
+        env:
+          ARTIFACTORY_USR: ${{ secrets.ARTIFACTORY_USER }}
+          ARTIFACTORY_PWD: ${{ secrets.ARTIFACTORY_TOKEN }}
+        run: |
+          mvn sonar:sonar -Dsonar.login=${{ secrets.SONARQUBE_TOKEN }}  \
+          -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY}} \
+          -Dsonar.projectName=${{ env.PROJECT_NAME }} \
+          -Dsonar.host.url=${{ env.SONAR_SERVER_URL }} \
+          -Dsonar.projectVersion="${{ inputs.tag }}" \
+          -DSONAR_GENERATE_COVERAGE_BADGE=true \
+          -Dsonar.qualitygate.wait=${{ env.SONAR_WAIT_FOR_QUALITY_GATE }}
