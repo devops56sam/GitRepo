@@ -1,12 +1,12 @@
 on:
   workflow_call:
-    inputs:
-      name: 
+   # inputs:
+   #   name: 
         # Friendly description to be shown in the UI instead of 'name'
-        description: 'Do you want sonar check?'
-        required: true
+     #   description: 'Do you want sonar check?'
+     #   required: true
         # Default value if no value is explicitly provided
-        default: 'No'
+     #   default: 'No'
            
       environment:
         required: true
@@ -17,7 +17,7 @@ on:
       pull_request:
         required: false
         type: boolean
-    secrets:
+      secrets:
       ARTIFACTORY_USER:
         required: true
       ARTIFACTORY_TOKEN:
