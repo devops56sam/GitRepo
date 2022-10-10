@@ -1,12 +1,12 @@
 on:
   workflow_call:
    # inputs:
-   #   name: 
-        # Friendly description to be shown in the UI instead of 'name'
-     #   description: 'Do you want sonar check?'
-     #   required: true
-        # Default value if no value is explicitly provided
-     #   default: 'No'
+    #  name: 
+        #  Friendly description to be shown in the UI instead of 'name'
+    #   description: 'Do you want sonar check?'
+     #  required: true
+       # Default value if no value is explicitly provided
+      # default: 'No'
            
       environment:
         required: true
@@ -87,7 +87,7 @@ jobs:
 
       - name: Sonar
         if: ${{ false }}
-        if: env.SONAR_ENABLED == 'true'
+        # if: env.SONAR_ENABLED == 'true'
         env:
           ARTIFACTORY_USR: ${{ secrets.ARTIFACTORY_USER }}
           ARTIFACTORY_PWD: ${{ secrets.ARTIFACTORY_TOKEN }}
